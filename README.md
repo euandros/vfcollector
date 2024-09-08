@@ -63,7 +63,7 @@ O **Vansor Forensic Collector** é um script de automação desenvolvido para co
    Siga as instruções do menu para selecionar as operações desejadas.
    ```
 
-3. **#xemplo da saída:**
+3. **Exemplo da saída:**
 
 ![image](https://github.com/user-attachments/assets/c6d3d156-a9fc-42d3-ab03-5052bb22bf0c)
 

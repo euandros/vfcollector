@@ -12,8 +12,13 @@ COLETA=""
 
 # Função para criar a pasta de evidências e aplicar imutabilidade nos arquivos
 criar_pasta_evidencias() {
-    echo "Criando pasta de evidências $COLETA..."
-    mkdir "$COLETA"
+    if [ -d $COLETA ]; then
+      echo "Pasta ja criada"
+    else
+      echo "Criando pasta de evidências $COLETA..."
+      mkdir -v "$COLETA"
+    fi
+    #read x
 }
 
 # Função para tornar arquivos imutáveis automaticamente
@@ -58,6 +63,7 @@ coletar_informacoes_rede() {
     echo "Coletando informações de rede..."
     ip a > ./$COLETA/ifconfig.txt
     tornar_arquivos_imutaveis
+    #read x
 }
 
 coletar_data_hora() {
@@ -179,19 +185,22 @@ menu_selecao() {
     echo "14. Compactar e Gerar Hash de Evidências"
     echo "15. Finalizar"
     echo ""
+    echo "9999. Coleta Completa"
+    echo ""
 }
 
 # Início do script
 
-echo "Digite o nome para a pasta de evidências:"
+echo -n "Digite o nome para a pasta de evidências: "
 read COLETA
+criar_pasta_evidencias
 
 while true; do
     menu_selecao
     read -p "Digite o número da operação desejada: " opcao
 
     case $opcao in
-        1) criar_pasta_evidencias; coletar_informacoes_gerais;;
+        1) coletar_informacoes_gerais;;
         2) coletar_informacoes_rede;;
         3) coletar_data_hora;;
         4) coletar_historico_comandos;;
@@ -205,7 +214,25 @@ while true; do
         12) verificar_arquivos_ocultos;;
         13) gerar_hashes;;
         14) compactar_evidencias;;
+        9999) 
+          compactar_evidencias
+          coletar_informacoes_gerais
+          coletar_informacoes_rede
+          coletar_data_hora
+          coletar_historico_comandos
+          coletar_usuarios_logados
+          coletar_dump_memoria
+          verificar_processos_suspeitos
+          verificar_modulos_kernel
+          verificar_portas_abertas
+          verificar_binarios_modificados
+          verificar_acessos_suspeitos
+          verificar_arquivos_ocultos
+          gerar_hashes
+          compactar_evidencias
+          exit 1
+          ;;
         15) exit;;
-        *) echo "Opção inválida!";;
+        *) echo "Opção inválida!"; sleep 3;;
     esac
 done

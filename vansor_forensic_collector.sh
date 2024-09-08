@@ -6,14 +6,19 @@
 # Autor: Evandro Santos
 # Contato: evandro.santos@tutanota.com
 # Data: Domingo, 08 de setembro de 2024, São Paulo.
-# Versão: 1.0
+# Versão: 1.2
 
 COLETA=""
 
 # Função para criar a pasta de evidências e aplicar imutabilidade nos arquivos
 criar_pasta_evidencias() {
     echo "Criando pasta de evidências $COLETA..."
-    mkdir "$COLETA"
+    if [ -d $COLETA ]; then
+      echo "Pasta ja criada"
+    else
+      echo "Criando pasta de evidências $COLETA..."
+      mkdir -v "$COLETA"
+    fi
 }
 
 # Função para tornar arquivos imutáveis automaticamente
@@ -57,6 +62,15 @@ coletar_informacoes_gerais() {
 coletar_informacoes_rede() {
     echo "Coletando informações de rede..."
     ip a > ./$COLETA/ifconfig.txt
+
+    echo "Roteamento"
+    route -n > ./$COLETA/route.txt
+
+    echo "Tabela ARP"
+    arp -a > ./$COLETA/route.txt
+
+    echo "Servidor DNS"
+    cat /etc/resolv.conf  > ./$COLETA/resolv.txt
     tornar_arquivos_imutaveis
 }
 
@@ -83,7 +97,6 @@ coletar_dump_memoria() {
     dd if=/proc/kcore of=./$COLETA/mem_dump.lime bs=1M
     tornar_arquivos_imutaveis
 }
-
 verificar_processos_suspeitos() {
     echo "Verificando processos suspeitos..."
     ps aux --sort=-%mem | head -n 10 > "./$COLETA/processos_suspeitos.txt"
@@ -114,10 +127,64 @@ verificar_binarios_modificados() {
     tornar_arquivos_imutaveis
 }
 
+verificar_usuarios_e_grupos() {
+    echo "Verificando usuarios no sistema"
+    echo "Copiando arquivo passwd"
+    cat /etc/passwd >  "./$COLETA/passwd.txt"
+
+    echo "Copiando arquivo /etc/group"
+    cat /etc/group > "./$COLETA/group.txt"
+
+    echo "Copiando arquivo sudoers" 
+    cat /etc/sudoers | grep -Ev '[:blank]*#|^[:blank]*$' | awk '{print $1,$2}' >  "./$COLETA/sudoers.txt"
+
+    echo "Verificando usuarios bloqueados"
+    cat /etc/shadow | grep -i ! | cut -d: -f1 >  "./$COLETA/usuarios_bloqueados.txt"
+    grep -i 'sudo:.*authentication failure' /var/log/auth.log > "./$COLETA/falhas_sudo.txt"
+
+    tornar_arquivos_imutaveis
+}
+
 verificar_acessos_suspeitos() {
     echo "Verificando acessos sudo não autorizados..."
     grep -i 'sudo:.*authentication failure' /var/log/auth.log > "./$COLETA/falhas_sudo.txt"
+    # ultimos logons
+    
+    echo "Verificando ultimos logins"
+    lastlog | grep -v "**Never logged in**" > "./$COLETA/lastlog.txt"
+
     tornar_arquivos_imutaveis
+}
+
+verificar_pacotes_instalados(){
+    # Debian (DEB)
+    if command -v dpkg &> /dev/null; then
+        echo "dpkg está instalado no sistema."
+        dpkg -l "./$COLETA/pacotes.txt"
+    # RPM
+    elif command -v rpm &> /dev/null; then
+        echo "rpm está instalado no sistema."
+        rpm -qa "./$COLETA/pacotes.txt"
+    else
+        echo "Nenhum dos gerenciadores de pacotes (dpkg ou rpm) está instalado."
+    fi
+}
+
+coletar_logs_e_registros() {
+    # Criando diretorio especifico para logs de auditoria do linux
+    mkdir -p $COLETA/logs/
+    # Lista de arquivos ou diretórios para copiar
+    itens=("apt" "audit" "auth.log" "btmp" "cron.log" "daemon.log" "debug" "dpkg.log" "error.1" "faillog" "journal" "kern.log" "lastlog" "mail.info" "mail.log" "mail.warn" "messages" "syslog" "sysstat" "vzdump" "wtmp")
+    # Loop para copiar cada item
+    for item in "${itens[@]}"; do
+        # Verifica se o item existe no diretório de origem
+        if [ -e "/var/log/$item" ]; then
+            echo "Copiando $item para o destino..."
+            cp -r "/var/log/$item" "$COLETA/logs"
+        else
+            echo "$item não encontrado em /var/log"
+        fi
+    done
 }
 
 verificar_arquivos_ocultos() {
@@ -136,6 +203,27 @@ compactar_evidencias() {
     echo "Compactando evidências..."
     tar -czf ./$COLETA/evidencias.tar.gz -C $COLETA .
     sha256sum ./$COLETA/evidencias.tar.gz > ./$COLETA/evidencias.sha256
+}
+
+# Função para coletar tudo
+coletar_tudo() {
+    coletar_informacoes_gerais
+    coletar_informacoes_rede
+    coletar_data_hora
+    coletar_historico_comandos
+    coletar_usuarios_logados
+    coletar_dump_memoria
+    coletar_logs_e_registros
+    verificar_processos_suspeitos
+    verificar_modulos_kernel
+    verificar_usuarios_e_grupos
+    verificar_portas_abertas
+    verificar_binarios_modificados
+    verificar_pacotes_instalados
+    verificar_acessos_suspeitos
+    verificar_arquivos_ocultos
+    gerar_hashes
+    compactar_evidencias
 }
 
 # Função para exibir o nome do script em ASCII art
@@ -169,15 +257,19 @@ menu_selecao() {
     echo "4. Coletar Histórico de Comandos"
     echo "5. Coletar Usuários Logados"
     echo "6. Coletar Dump de Memória"
-    echo "7. Verificar Processos Suspeitos"
-    echo "8. Verificar Módulos do Kernel"
-    echo "9. Verificar Portas Abertas"
-    echo "10. Verificar Binários Modificados"
-    echo "11. Verificar Acessos Sudo Suspeitos"
-    echo "12. Verificar Arquivos Ocultos"
-    echo "13. Gerar Hashes"
-    echo "14. Compactar e Gerar Hash de Evidências"
-    echo "15. Finalizar"
+    echo "7. Coleta de logs e registros"
+    echo "8. Verificar Processos Suspeitos"
+    echo "9. Verificar Módulos do Kernel"
+    echo "10. Verificar Usuarios e grupos no sistema"
+    echo "11. Verificar Portas Abertas"
+    echo "12. Verificar Binários Modificados"
+    echo "13. Verificar pacotes instalados"
+    echo "14. Verificar Acessos Sudo Suspeitos"
+    echo "15. Verificar Arquivos Ocultos"
+    echo "16. Gerar Hashes"
+    echo "17. Compactar e Gerar Hash de Evidências"
+    echo "tudo. Coletar todos os logs"
+    echo "0. Finalizar"
     echo ""
 }
 
@@ -197,15 +289,20 @@ while true; do
         4) coletar_historico_comandos;;
         5) coletar_usuarios_logados;;
         6) coletar_dump_memoria;;
-        7) verificar_processos_suspeitos;;
-        8) verificar_modulos_kernel;;
-        9) verificar_portas_abertas;;
-        10) verificar_binarios_modificados;;
-        11) verificar_acessos_suspeitos;;
-        12) verificar_arquivos_ocultos;;
-        13) gerar_hashes;;
-        14) compactar_evidencias;;
-        15) exit;;
+        6) coletar_dump_memoria;;
+        7) coletar_logs_e_registros;;
+        8) verificar_processos_suspeitos;;
+        9) verificar_modulos_kernel;;
+        10) verificar_usuarios_e_grupos;;
+        11) verificar_portas_abertas;;
+        12) verificar_binarios_modificados;;
+        13) verificar_pacotes_instalados;;
+        14) verificar_acessos_suspeitos;;
+        15) verificar_arquivos_ocultos;;
+        16) gerar_hashes;;
+        17) compactar_evidencias;;
+        0) exit;;
+        tudo) coletar_tudo;;
         *) echo "Opção inválida!";;
     esac
 done

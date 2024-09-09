@@ -73,8 +73,7 @@ O **Vansor Forensic Collector** é um script de automação desenvolvido para co
 
 3. **Exemplo da saída:**
 
-![image](https://github.com/user-attachments/assets/c6d3d156-a9fc-42d3-ab03-5052bb22bf0c)
-
+![image](https://github.com/user-attachments/assets/48e2bb3d-8f02-4664-a7c5-81df489b3a31)
 
 ## Observações
 

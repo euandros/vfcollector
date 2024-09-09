@@ -1,8 +1,13 @@
-# Vansor Forensic Collector v1.0
+# Vansor Forensic Collector v1.2
 ![Segmento](https://img.shields.io/badge/Segmento_:-Segurança_da_Informação-blue?style=flat-square) 
 ![Fase](https://img.shields.io/badge/Fase_:-Desenvolvimento-orange?style=flat-square) 
 ![Versão](https://img.shields.io/badge/versão_:-1.0-darkyellow?style=flat-square) 
 ![Tecnologias](https://img.shields.io/badge/Tecnologias_:-Shell_Scripting,_Linux-darkyellow?style=flat-square) 
+
+## Atualização
+
+Alteração da função para criar pasta, adição das funções para coleta dos dados: logs do audit,  logs do journal, usuarios e grupos, arquivo shadow, tabela arp, resolv.conf, pacotes RPM ou DPKG.
+
 ## Descrição
 
 O **Vansor Forensic Collector** é um script de automação desenvolvido para coleta, validação e análise de dados em servidores Linux. Destinado a operações de análise forense, o script coleta uma variedade de informações do sistema, realiza verificações e gera relatórios que são tornados imutáveis para garantir a integridade dos dados.
